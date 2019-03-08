@@ -19,14 +19,12 @@ extern "C" {
 /* image */
 typedef struct struct_FD_Image
 {
-    unsigned char	    *raw_data;
-    unsigned char           *mask_data;
+    unsigned char	    *rawData;
     int             	    width;
     int             	    height;
-    int			    pitch;
-    int                     roi_shape;
 
 } FD_Image;
+
 
 /**
  * @brief   read image
@@ -41,10 +39,12 @@ int FD_ReadImg(FD_Image*   srcImg,
  * @brief   save as image
  * @param	image       [in]    image structure(raw data, width, etc.)
  * @param	img_str     [in]    image file name
+ * @param	format      [in]    image channel
  * @return	error code  [out]
  */			
 int FD_SaveAsImg(FD_Image*  image,
-                 char*      img_str);
+                 char*      img_str,
+                 int        channel);
 
 					  
 /**
@@ -69,6 +69,16 @@ int FD_Tranditional_Detection(FD_Image* runtimeImg,
 
 int FD_Update_Background(FD_Image* runtimeImg,
                          FD_Image* backgroundImg);
+
+
+int FD_GMM_Param_Init(FD_GMM_PARAM** gmmParam);
+
+
+void FD_GMM_Param_Release(FD_GMM_PARAM* gmmParam);
+
+int FD_Histogram_Background(FD_Image*     backgroundImg,
+                            FD_GMM_PARAM* gmmParam,
+                            int           frameID);
 
 #ifdef __cplusplus
 }

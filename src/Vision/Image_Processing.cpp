@@ -10,10 +10,36 @@
 #include <iostream>
 #include <fstream>
 
-#include <ImageAlgo_Traditional.h>
 #include <Image_Processing.h>
 #include <Image_Params.h>
 #include <Utility.h>
+
+
+int FD_Histogram_Background(FD_Image*     backgroundImg,
+                            FD_GMM_PARAM* gmmParam,
+                            int           frameID)
+{
+    int exitCode  = dFALSE;
+
+    if(backgroundImg == 0 || gmmParam == 0)
+    {
+        return eIMAGE_PROCESS_GMM_HIST_BACKGROUND_IMG_SRC_INPUT;
+    }
+
+    exitCode = FDAlgoHistogramBackground(backgroundImg->rawData,
+                                        gmmParam->histRawData,
+                                        backgroundImg->width,
+                                        backgroundImg->height,
+                                        frameID);
+
+    if(exitCode)
+    {
+        return eIMAGE_PROCESS_GMM_HIST_BACKGROUND;
+    }
+
+    return exitCode;
+}
+
 
 int FD_Update_Background(FD_Image* runtimeImg,
                          FD_Image* backgroundImg)
@@ -26,8 +52,8 @@ int FD_Update_Background(FD_Image* runtimeImg,
     }
 
 
-    exitCode = FDAlgoUpdateBackground(backgroundImg->raw_data,
-                                      runtimeImg->raw_data,
+    exitCode = FDAlgoUpdateBackground(backgroundImg->rawData,
+                                      runtimeImg->rawData,
                                       runtimeImg->width,
                                       runtimeImg->height);
 
@@ -52,9 +78,9 @@ int FD_Tranditional_Detection(FD_Image* runtimeImg,
     }
 
 
-    exitCode = FDAlgoTranditionalDetection(backgroundImg->raw_data,
-                                           runtimeImg->raw_data,
-                                           resultImg->raw_data,
+    exitCode = FDAlgoTranditionalDetection(backgroundImg->rawData,
+                                           runtimeImg->rawData,
+                                           resultImg->rawData,
                                            runtimeImg->width,
                                            runtimeImg->height,
                                            &resultImg->width,
@@ -79,10 +105,9 @@ int FD_ReadImg(FD_Image*   srcImg,
         return eIMAGE_PROCESS_READ_IMG_SRC_INPUT;
     }
 
-    exitCode = FDAlgoCVReadImg(srcImg->raw_data,
+    exitCode = FDAlgoCVReadImg(srcImg->rawData,
                                &srcImg->width,
                                &srcImg->height,
-                               &srcImg->pitch,
                                str);
 
     if(exitCode)
@@ -93,8 +118,9 @@ int FD_ReadImg(FD_Image*   srcImg,
     return exitCode;
 }
 
-int FD_SaveAsImg(FD_Image* image,
-                 char*	   img_str)
+int FD_SaveAsImg(FD_Image*      image,
+                 char*          img_str,
+                 int            channel)
 {
     int exitCode = dFALSE;
 
@@ -103,11 +129,11 @@ int FD_SaveAsImg(FD_Image* image,
         return eIMAGE_PROCESS_SAVE_IMG_SRC_INPUT;
     }
 
-    exitCode = FDAlgoCVSaveAsImg(image->raw_data,
+    exitCode = FDAlgoCVSaveAsImg(image->rawData,
                                  image->width,
                                  image->height,
-                                 image->pitch,
-                                 img_str);
+                                 img_str,
+                                 channel);
 
     if(exitCode)
     {
@@ -127,23 +153,15 @@ int FD_Image_Resource_Init(FD_Image** image)
     {
         memset((*image), 0, sizeof(FD_Image));
 
-        (*image)->raw_data = (unsigned char*)malloc((CR_MAX_WIDTH * CR_MAX_HEIGHT * CR_MAX_PITCH_SIZE));
+        (*image)->rawData = (unsigned char*)malloc((FD_MAX_WIDTH * FD_MAX_HEIGHT * FD_MAX_PITCH_SIZE));
 
-        if((*image)->raw_data == NULL)
+        if((*image)->rawData == NULL)
         {
             return eIMAGE_PROCESS_IMG_INIT;
         }
 
-        memset((*image)->raw_data, 0, (CR_MAX_WIDTH * CR_MAX_HEIGHT * CR_MAX_PITCH_SIZE) );
+        memset((*image)->rawData, 0, (FD_MAX_WIDTH * FD_MAX_HEIGHT * FD_MAX_PITCH_SIZE));
 
-        (*image)->mask_data = (unsigned char*)malloc(CR_MAX_WIDTH * CR_MAX_HEIGHT);
-
-        if((*image)->mask_data == NULL)
-        {
-            return eIMAGE_PROCESS_IMG_INIT;
-        }
-
-        memset((*image)->mask_data, 255, CR_MAX_WIDTH * CR_MAX_HEIGHT);
     }
     else
     {
@@ -157,16 +175,59 @@ void FD_Image_Resource_Release(FD_Image* image)
 {
     if(image)
     {
-        if(image->raw_data)
+        if(image->rawData)
         {
-            free(image->raw_data);
-        }
-
-        if(image->mask_data)
-        {
-            free(image->mask_data);
+            free(image->rawData);
         }
 
         free(image);
+    }
+}
+
+int FD_GMM_Param_Init(FD_GMM_PARAM** gmmParam)
+{
+    int	exitCode = dFALSE,
+        i        = 0;
+
+    (*gmmParam)  = (FD_GMM_PARAM*)malloc(sizeof(FD_GMM_PARAM));
+
+    if((*gmmParam))
+    {
+        memset((*gmmParam), 0, sizeof(FD_GMM_PARAM));
+
+        (*gmmParam)->histRawData = (FD_GMM_RAW_DATA**)malloc((FD_MAX_WIDTH * FD_MAX_HEIGHT * FD_MAX_PITCH_SIZE) * sizeof(FD_GMM_RAW_DATA*));
+
+        for(i = 0; i < FD_MAX_WIDTH * FD_MAX_HEIGHT * FD_MAX_PITCH_SIZE; i++)
+        {
+             (*gmmParam)->histRawData[i] = (FD_GMM_RAW_DATA*)malloc(FD_MAX_GMM_HIST_SIZE * sizeof(FD_GMM_RAW_DATA));
+
+              memset(((*gmmParam)->histRawData[i]), FD_MAX_GMM_HIST_SIZE, sizeof(FD_GMM_RAW_DATA));
+        }
+    }
+    else
+    {
+        return eIMAGE_PROCESS_GMM_PARAM_INIT;
+    }
+
+    return exitCode;
+}
+
+void FD_GMM_Param_Release(FD_GMM_PARAM* gmmParam)
+{
+    int i = 0;
+
+    if(gmmParam)
+    {
+        if(gmmParam->histRawData)
+        {
+            for(i = 0; i < FD_MAX_WIDTH * FD_MAX_HEIGHT * FD_MAX_PITCH_SIZE; i++)
+            {
+                free(gmmParam->histRawData[i]);
+            }
+
+            free(gmmParam->histRawData);
+        }
+
+        free(gmmParam);
     }
 }

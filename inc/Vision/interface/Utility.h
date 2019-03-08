@@ -14,15 +14,14 @@ extern "C" {
 int FDAlgoCVReadImg(unsigned char*    raw_data,
                     int*              width,
                     int*              height,
-                    int*              pitch,
                     char*             str);
 
 
 int FDAlgoCVSaveAsImg(unsigned char*    raw_data,
                       int               width,
                       int               height,
-                      int               pitch,
-                      char*             str);
+                      char*             str,
+                      int               channel);
 
 
 int FDAlgoOtsu(unsigned char*    raw_data,

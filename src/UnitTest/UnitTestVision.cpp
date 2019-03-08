@@ -28,6 +28,94 @@
 #define dADAPTIVE_FIRST_IMG_ID 1150
 #define dADAPTIVE_NUM 15
 
+#define dGMM_RESULT_IMG_NAME "resultGMM.png"
+#define dGMM_RUNTIME_IMG_PREFIX "Fountain"
+#define dGMM_FIRST_IMG_ID 1150
+#define dGMM_NUM 15
+
+
+static void GMM_test(int argc, char* argv[])
+{
+    int     ret       = 0,
+            testID    = 0,
+            i         = 0;
+
+    FD_Image    *runtime_img    = 0,
+                *background_img = 0,
+                *result_img     = 0;
+
+    FD_GMM_PARAM *gmmParam = 0;
+
+    std::string testStr,
+                saveImgStr;
+
+    /* initialize image resource using Heap memory */
+    ret = FD_Image_Resource_Init(&runtime_img);
+    PRINT_ERROR_CODE(ret)
+
+    ret = FD_Image_Resource_Init(&background_img);
+    PRINT_ERROR_CODE(ret)
+
+    ret = FD_Image_Resource_Init(&result_img);
+    PRINT_ERROR_CODE(ret)
+
+    ret = FD_GMM_Param_Init(&gmmParam);
+    PRINT_ERROR_CODE(ret)
+
+    /* read image */
+    for(i = 0; i < dGMM_NUM; i++)
+    {
+        testStr = dFOREGROUND_DETECTION_IMG_PATH;
+
+        testStr += dGMM_RUNTIME_IMG_PREFIX;
+
+        testID = dGMM_FIRST_IMG_ID + i;
+
+        testStr += std::to_string(testID);
+
+        testStr += ".bmp";
+
+        ret = FD_ReadImg(background_img,
+                       (char*)testStr.c_str());
+        PRINT_ERROR_CODE(ret)
+
+        ret = FD_Histogram_Background(background_img,
+                                      gmmParam,
+                                      i);
+        PRINT_ERROR_CODE(ret)
+
+    }
+
+    testStr = dFOREGROUND_DETECTION_IMG_PATH;
+
+    testStr += dGMM_RUNTIME_IMG_PREFIX;
+
+    testID = dGMM_FIRST_IMG_ID + i;
+
+    testStr += std::to_string(testID);
+
+    testStr += ".bmp";
+
+    ret = FD_ReadImg(runtime_img,
+                   (char*)testStr.c_str());
+    PRINT_ERROR_CODE(ret)
+
+    ////
+
+
+
+
+    // release resource
+    FD_Image_Resource_Release(runtime_img);
+
+    FD_Image_Resource_Release(background_img);
+
+    FD_Image_Resource_Release(result_img);
+
+    FD_GMM_Param_Release(gmmParam);
+
+    return;
+}
 
 static void adaptive_test(int argc, char* argv[])
 {
@@ -61,7 +149,7 @@ static void adaptive_test(int argc, char* argv[])
                      (char*)testStr.c_str());
     PRINT_ERROR_CODE(ret)
 
-    for(i = 0; i < dADAPTIVE_NUM; i++)
+    for(i = 1; i < dADAPTIVE_NUM; i++)
     {
         testStr = dFOREGROUND_DETECTION_IMG_PATH;
 
@@ -104,7 +192,8 @@ static void adaptive_test(int argc, char* argv[])
     saveImgStr = dADAPTIVE_RESULT_IMG_NAME;
 
     ret = FD_SaveAsImg(result_img,
-                       (char*)saveImgStr.c_str());
+                       (char*)saveImgStr.c_str(),
+                       eIMAGE_Y);
     PRINT_ERROR_CODE(ret)
 
     // release resource
@@ -162,7 +251,8 @@ static void traditional_test(int argc, char* argv[])
     saveImgStr = dTRADITIONAL_RESULT_IMG_NAME;
 
     ret = FD_SaveAsImg(result_img,
-                       (char*)saveImgStr.c_str());
+                       (char*)saveImgStr.c_str(),
+                       eIMAGE_Y);
     PRINT_ERROR_CODE(ret)
 
     // release resource
@@ -182,6 +272,8 @@ int main(int argc, char* argv[])
     traditional_test(argc,argv);
 
     adaptive_test(argc,argv);
+
+    GMM_test(argc,argv);
 
     return 0;
 }

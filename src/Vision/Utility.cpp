@@ -13,7 +13,6 @@ using namespace cv;
 int FDAlgoCVReadImg(unsigned char*		raw_data,
                     int*              img_w,
                     int*              img_h,
-                    int*              img_pitch,
                     char*             img_str)
 {
     int             exitCode = dFALSE,
@@ -24,20 +23,32 @@ int FDAlgoCVReadImg(unsigned char*		raw_data,
 
     try
     {
-        Mat img;
+        Mat img,
+            yuv_img;
 
-        img = imread(str,IMREAD_GRAYSCALE );
+        img = imread(str);
 
         *img_h = img.rows;
         *img_w = img.cols;
-        *img_pitch = img.cols;
+
+        cvtColor(img, yuv_img, COLOR_BGR2YUV);
+
+        unsigned char *pY = raw_data,
+                      *pU = raw_data + FD_MAX_WIDTH * FD_MAX_HEIGHT,
+                      *pV = raw_data + FD_MAX_WIDTH * FD_MAX_HEIGHT * 2;
 
         for(j = 0; j < img.rows; j++)
         {
             for(i = 0; i < img.cols; i++)
             {
-               raw_data[j * img.cols + i] = img.at<uchar>(j,i);
+               *(pY + i) = yuv_img.at<cv::Vec3b>(j,i)[0];
+               *(pU + i) = yuv_img.at<cv::Vec3b>(j,i)[1];
+               *(pV + i) = yuv_img.at<cv::Vec3b>(j,i)[2];
             }
+
+            pY += img.cols;
+            pU += img.cols;
+            pV += img.cols;
         }
     }
     catch( cv::Exception& e )
@@ -53,18 +64,47 @@ int FDAlgoCVReadImg(unsigned char*		raw_data,
 int FDAlgoCVSaveAsImg(unsigned char*    raw_data,
                       int             	img_w,
                       int             	img_h,
-                      int             	img_pitch,
-                      char*           	img_str)
+                      char*           	img_str,
+                      int               channel)
 {
     int             exitCode = dFALSE;
-    std::string     str(img_str);
+
+    std::string     strTmp(img_str);
+
+    std::string     strOutput;
+
+    unsigned char* pRawData = 0;
+
+    switch (channel)
+    {
+      case eIMAGE_Y:
+        strOutput = "Y";
+        strOutput += strTmp;
+        pRawData = raw_data;
+        break;
+      case eIMAGE_U:
+        strOutput = "U";
+        strOutput += strTmp;
+        pRawData = raw_data + FD_MAX_WIDTH * FD_MAX_HEIGHT;
+        break;
+      case eIMAGE_V:
+        strOutput = "V";
+        strOutput += strTmp;
+        pRawData = raw_data + FD_MAX_WIDTH * FD_MAX_HEIGHT * 2;
+        break;
+      default:
+        strOutput = "Y";
+        strOutput += strTmp;
+        break;
+    }
 
     try
     {
         // create Mat
-        Mat image(Size(img_w, img_h), CV_8UC1, raw_data, Mat::AUTO_STEP);
+        Mat image(Size(img_w, img_h), CV_8UC1, pRawData, Mat::AUTO_STEP);
+
         // save as image
-        imwrite(str, image);
+        imwrite(strOutput, image);
     }
     catch( cv::Exception& e )
     {
